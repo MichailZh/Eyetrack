@@ -1,0 +1,16 @@
+<html>
+<head>
+<title>test</title></head>
+<body>
+<h1>LOL <?php 
+
+$x=2+2;
+echo $_GET['param']; 
+
+?> </h1>
+
+<a href="https://www.google.com/search?q=poisk"><img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png" >
+</a>
+
+</body>
+</html>
