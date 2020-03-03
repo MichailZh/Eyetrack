@@ -1,36 +1,32 @@
 <!doctype html>
 <html>
-
-<body>
-<video id="webcam" width="400" height="300" autoplay></video>
-<canvas id="overlay" width="400" height="300"></canvas>
-<canvas id="mouth" width="40" height="25"></canvas>
-
-<canvas id="eyes" width="50" height="25"></canvas>
-
-
-<style>
-    #eyes {
-        position: absolute;
-        top: 0;
-        left: 500px;
-    }
-    #mouth {
-        position: absolute;
-        top: 50px;
-        left: 500px;
-    }
-
-
-
-    #webcam, #overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-    }
-</style>
+  <head>
+    <title>Balls tracker</title>
     <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.12.0"></script>
+  </head>
+  <body>
+    <video id="webcam" width="400" height="300" autoplay></video>
+    <canvas id="overlay" width="400" height="300"></canvas>
+    <canvas id="mouth" width="40" height="25"></canvas>
+    <canvas id="eyes" width="50" height="25"></canvas>
+    <style>
+        #eyes {
+            position: absolute;
+            top: 0;
+            left: 500px;
+        }
+        #mouth {
+            position: absolute;
+            top: 50px;
+            left: 500px;
+        }
+        #webcam, #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
     <script src="clmtrackr.js"></script>
     <script src="main.js"></script>
 </body>
