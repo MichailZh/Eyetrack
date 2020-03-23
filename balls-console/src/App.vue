@@ -2,13 +2,15 @@
 #app
   h1 App
   eye-tracker
+  cookie-law(theme="dark-lime")
 </template>
 
 <script>
+import CookieLaw from 'vue-cookie-law'
 import EyeTracker from './components/EyeTracker'
 
 export default {
-  components: { EyeTracker }
+  components: { CookieLaw, EyeTracker }
 }
 </script>
 
