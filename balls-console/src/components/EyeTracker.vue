@@ -4,7 +4,7 @@ div
   canvas#overlay(width="400" height="300" ref="overlay")
   canvas#eyes(width="50" height="25" ref="eyes")
   el-button#train(@click="fitModel") Train!
-  #target
+  #target(ref="target")
 </template>
 
 <script>
@@ -43,8 +43,9 @@ export default {
         const prediction = this.currentModel.predict(image)
 
         // Конвертируем нормализованные координаты в позицию на экране
-        const targetWidth = this.$refs.target.outerWidth()
-        const targetHeight = this.$refs.target.outerHeight()
+        console.log('prediction:', prediction)
+        const targetWidth = this.$refs.target.outerWidth
+        const targetHeight = this.$refs.target.outerHeight
         const { height, width } = this.getWindowDim()
         const x = ((prediction.get(0, 0) + 1) / 2) * (width - targetWidth)
         const y = ((prediction.get(0, 1) + 1) / 2) * (height - targetHeight)
@@ -131,7 +132,7 @@ export default {
       return this.$el.ownerDocument.defaultView
     },
     getWindowDim() {
-      const window = getWindow()
+      const window = this.getWindow()
       return {
         width: window.innerWidth,
         height: window.innerHeight
