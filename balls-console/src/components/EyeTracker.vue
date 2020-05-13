@@ -29,13 +29,71 @@ export default {
       mouse: {
         x: null,
         y: null
-      }
+      },
+      currentModel: null
     }
   },
   methods: {
-    testEvent(event) {
-      console.log('hello')
-      console.log('event:', event)
+    updateTarget() {
+      if (this.currentModel === null) {
+        return
+      }
+      tf.tidy(() => {
+        const image = this.getImage()
+        const prediction = this.currentModel.predict(image)
+
+        // Конвертируем нормализованные координаты в позицию на экране
+        const targetWidth = this.$refs.target.outerWidth()
+        const targetHeight = this.$refs.target.outerHeight()
+        const { height, width } = this.getWindowDim()
+        const x = ((prediction.get(0, 0) + 1) / 2) * (width - targetWidth)
+        const y = ((prediction.get(0, 1) + 1) / 2) * (height - targetHeight)
+
+        // Переместим в нужное место кружок:
+        const target = this.$refs.target
+        target.css('left', `${x}px`)
+        target.css('top', `${y}px`)
+      })
+    },
+    createModel() {
+      const model = tf.sequential()
+
+      model.add(
+        tf.layers.conv2d({
+          kernelSize: 5,
+          filters: 20,
+          strides: 1,
+          activation: 'relu',
+          inputShape: [this.$refs.eyes.height, this.$refs.eyes.width, 3]
+        })
+      )
+
+      model.add(
+        tf.layers.maxPooling2d({
+          poolSize: [2, 2],
+          strides: [2, 2]
+        })
+      )
+
+      model.add(tf.layers.flatten())
+
+      model.add(tf.layers.dropout(0.2))
+
+      // Два выходных значения x и y
+      model.add(
+        tf.layers.dense({
+          units: 2,
+          activation: 'tanh'
+        })
+      )
+
+      // Используем оптимизатор Adam с коэффициентом скорости обучения 0.0005 и с функцией потерь MSE
+      model.compile({
+        optimizer: tf.train.adam(0.0005),
+        loss: 'meanSquaredError'
+      })
+
+      return model
     },
     fitModel() {
       let batchSize = Math.floor(this.dataset.train.n * 0.1)
@@ -45,11 +103,11 @@ export default {
         batchSize = 64
       }
 
-      if (currentModel == null) {
-        currentModel = createModel()
+      if (this.currentModel === null) {
+        this.currentModel = this.createModel()
       }
 
-      currentModel.fit(this.dataset.train.x, this.dataset.train.y, {
+      this.currentModel.fit(this.dataset.train.x, this.dataset.train.y, {
         batchSize: batchSize,
         epochs: 20,
         shuffle: true,
@@ -58,9 +116,8 @@ export default {
     },
     getImage() {
       // Захват текущего изображения в виде тензора
-      const self = this
-      return tf.tidy(function() {
-        const image = tf.browser.fromPixels(self.$refs.eyes)
+      return tf.tidy(() => {
+        const image = tf.browser.fromPixels(this.$refs.eyes)
         // Добавление <i><font color="#999999">измерения</font></i>:
         const batchedImage = image.expandDims(0)
         // Нормализация и возврат данных:
@@ -82,9 +139,9 @@ export default {
     }
   },
   mounted() {
-    console.log('window:', window)
-    console.log('this:', this)
-    console.log('this.$el.ownerDocument.defaultView:', this.$el.ownerDocument.defaultView)
+    // console.log('window:', window)
+    // console.log('this:', this)
+    // console.log('this.$el.ownerDocument.defaultView:', this.$el.ownerDocument.defaultView)
     const video = this.$refs.webcam
     const ctrack = new clm.tracker()
     ctrack.init()
@@ -92,17 +149,16 @@ export default {
     const overlayCC = overlay.getContext('2d')
     // Отслеживание перемещений мыши:
 
-    const self = this
-    function captureExample() {
+    const captureExample = () => {
       // Возьмём самое свежее изображение глаз и добавим его в набор данных
-      tf.tidy(function() {
-        const image = self.getImage()
-        const mousePos = tf.tensor1d([mouse.x, mouse.y]).expandDims(0)
+      tf.tidy(() => {
+        const image = this.getImage()
+        const mousePos = tf.tensor1d([this.mouse.x, this.mouse.y]).expandDims(0)
 
         // Решим, в какую выборку (обучающую или контрольную) его добавлять
-        const subset = self.dataset[Math.random() > 0.2 ? 'train' : 'val']
+        const subset = this.dataset[Math.random() > 0.2 ? 'train' : 'val']
 
-        if (subset.x == null) {
+        if (subset.x === null) {
           // Создадим новые тензоры
           subset.x = tf.keep(image)
           subset.y = tf.keep(mousePos)
@@ -120,7 +176,7 @@ export default {
       })
     }
 
-    function trackingLoop() {
+    const trackingLoop = () => {
       // Проверим, обнаружено ли в видеопотоке лицо,
       // и если это так - начнём его отслеживать.
       requestAnimationFrame(trackingLoop)
@@ -147,7 +203,7 @@ export default {
 
         // Вырезаем прямоугольник с глазами из видео и выводим его
         // в соответствующем элементе <canvas>
-        const eyesCanvas = self.$refs.eyes
+        const eyesCanvas = this.$refs.eyes
         const eyesCC = eyesCanvas.getContext('2d')
 
         eyesCC.drawImage(
@@ -183,7 +239,7 @@ export default {
     this.getWindow().addEventListener('keyup', function(event) {
       // Выполняется при нажатии на клавишу Пробел на клавиатуре
       console.log('event:', event)
-      if (event.keyCode == 32) {
+      if (event.keyCode === 32) {
         captureExample()
 
         event.preventDefault()
@@ -191,72 +247,7 @@ export default {
       }
     })
 
-    let currentModel
-
-    function createModel() {
-      const model = tf.sequential()
-
-      model.add(
-        tf.layers.conv2d({
-          kernelSize: 5,
-          filters: 20,
-          strides: 1,
-          activation: 'relu',
-          inputShape: [self.$refs.eyes.height(), self.$refs.eyes.width(), 3]
-        })
-      )
-
-      model.add(
-        tf.layers.maxPooling2d({
-          poolSize: [2, 2],
-          strides: [2, 2]
-        })
-      )
-
-      model.add(tf.layers.flatten())
-
-      model.add(tf.layers.dropout(0.2))
-
-      // Два выходных значения x и y
-      model.add(
-        tf.layers.dense({
-          units: 2,
-          activation: 'tanh'
-        })
-      )
-
-      // Используем оптимизатор Adam с коэффициентом скорости обучения 0.0005 и с функцией потерь MSE
-      model.compile({
-        optimizer: tf.train.adam(0.0005),
-        loss: 'meanSquaredError'
-      })
-
-      return model
-    }
-
-    function moveTarget() {
-      if (currentModel == null) {
-        return
-      }
-      tf.tidy(function() {
-        const image = self.getImage()
-        const prediction = currentModel.predict(image)
-
-        // Конвертируем нормализованные координаты в позицию на экране
-        const targetWidth = this.$refs.target.outerWidth()
-        const targetHeight = this.$refs.target.outerHeight()
-        const { height, width } = this.getWindowDim()
-        const x = ((prediction.get(0, 0) + 1) / 2) * (width - targetWidth)
-        const y = ((prediction.get(0, 1) + 1) / 2) * (height - targetHeight)
-
-        // Переместим в нужное место кружок:
-        const target = this.$refs.target
-        target.css('left', `${x}px`)
-        target.css('top', `${y}px`)
-      })
-    }
-
-    setInterval(moveTarget, 100)
+    setInterval(this.updateTarget, 100)
 
     navigator.mediaDevices.getUserMedia({ video: true }).then(onStreaming)
   }
