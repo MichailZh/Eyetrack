@@ -3,17 +3,33 @@ div
   video#webcam(width="400" height="300" ref="webcam" autoplay)
   canvas#overlay(width="400" height="300" ref="overlay")
   canvas#eyes(width="50" height="25" ref="eyes")
-  el-button#train(@click="fitModel") Train!
-  #target(ref="target")
+  el-button#train(@click="fitModel" type="primary" :loading = "trainloading") Train!
+  #target(v-show="targetPos.x !== null" :style="{top: targetPos.x + 'px', left: targetPos.y + 'px'}" ref="target")
 </template>
 
 <script>
 import clm from './clmtrackr.js'
 import * as tf from '@tensorflow/tfjs'
 
+// const mouse = {
+//     x: 0,
+//     y: 0,
+//
+//     handleMouseMove: function(event) {
+//
+//         mouse.x = (event.clientX / $(window).width()) * 2 - 1;
+//         mouse.y = (event.clientY / $(window).height()) * 2 - 1;
+//     },
+// }
+
 export default {
   data() {
     return {
+      targetPos: {
+        x: null,
+        y: null
+      },
+      trainloading: false,
       dataset: {
         train: {
           n: 0,
@@ -43,17 +59,20 @@ export default {
         const prediction = this.currentModel.predict(image)
 
         // Конвертируем нормализованные координаты в позицию на экране
-        console.log('prediction:', prediction)
-        const targetWidth = this.$refs.target.outerWidth
-        const targetHeight = this.$refs.target.outerHeight
+        // console.log('prediction:', prediction)
+        //   console.log(this.$refs)
+
+        const targetWidth = this.$refs.target.offsetWidth
+        const targetHeight = this.$refs.target.offsetHeight
         const { height, width } = this.getWindowDim()
+        const x1 = prediction.get(0, 0)
         const x = ((prediction.get(0, 0) + 1) / 2) * (width - targetWidth)
         const y = ((prediction.get(0, 1) + 1) / 2) * (height - targetHeight)
 
         // Переместим в нужное место кружок:
-        const target = this.$refs.target
-        target.css('left', `${x}px`)
-        target.css('top', `${y}px`)
+        // const target = this.$refs.target
+        this.targetPos.x = x
+        this.targetPos.y = y
       })
     },
     createModel() {
@@ -107,18 +126,25 @@ export default {
       if (this.currentModel === null) {
         this.currentModel = this.createModel()
       }
-
-      this.currentModel.fit(this.dataset.train.x, this.dataset.train.y, {
-        batchSize: batchSize,
-        epochs: 20,
-        shuffle: true,
-        validationData: [this.dataset.val.x, this.dataset.val.y]
+      tf.tidy(() => {
+        this.currentModel.fit(this.dataset.train.x, this.dataset.train.y, {
+          batchSize: batchSize,
+          epochs: 20,
+          shuffle: true,
+          validationData: [this.dataset.val.x, this.dataset.val.y],
+          onTrainEnd: () => {
+            this.trainloading = false
+          },
+          onTrainBegin: () => {
+            this.trainloading = true
+          }
+        })
       })
     },
     getImage() {
       // Захват текущего изображения в виде тензора
       return tf.tidy(() => {
-        const image = tf.browser.fromPixels(this.$refs.eyes)
+        const image = tf.fromPixels(this.$refs.eyes)
         // Добавление <i><font color="#999999">измерения</font></i>:
         const batchedImage = image.expandDims(0)
         // Нормализация и возврат данных:
@@ -134,8 +160,8 @@ export default {
     getWindowDim() {
       const window = this.getWindow()
       return {
-        width: window.innerWidth,
-        height: window.innerHeight
+        width: window.innerHeight,
+        height: window.innerWidth
       }
     }
   },
@@ -151,6 +177,9 @@ export default {
     // Отслеживание перемещений мыши:
 
     const captureExample = () => {
+      // this.targetPos.x = this.mouse.x
+      // this.targetPos.y = this.mouse.y
+      console.log(this.mouse)
       // Возьмём самое свежее изображение глаз и добавим его в набор данных
       tf.tidy(() => {
         const image = this.getImage()
@@ -176,6 +205,8 @@ export default {
         subset.n += 1
       })
     }
+
+
 
     const trackingLoop = () => {
       // Проверим, обнаружено ли в видеопотоке лицо,
@@ -237,9 +268,15 @@ export default {
 
       return [minX, minY, width, height]
     }
+    this.getWindow().addEventListener('mousemove', ({ x, y }) => {
+      this.mouse.x = (x/this.getWindow().innerWidth)*2-1
+      this.mouse.y = (y/this.getWindow().innerHeight)*2-1
+        // mouse.x = (event.clientX / $(window).width()) * 2 - 1;
+        // mouse.y = (event.clientY / $(window).height()) * 2 - 1;
+    })
     this.getWindow().addEventListener('keyup', function(event) {
       // Выполняется при нажатии на клавишу Пробел на клавиатуре
-      console.log('event:', event)
+      // console.log('event:', event)
       if (event.keyCode === 32) {
         captureExample()
 
