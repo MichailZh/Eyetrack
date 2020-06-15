@@ -1,30 +1,39 @@
 <template lang="pug">
 div
-  video#webcam(width="400" height="300" ref="webcam" autoplay)
-  canvas#overlay(width="400" height="300" ref="overlay")
-  canvas#eyes(width="50" height="25" ref="eyes")
-  el-button#train(@click="fitModel" type="primary" :loading = "trainloading") Train!
-  #target(v-show="targetPos.x !== null" :style="{top: targetPos.x + 'px', left: targetPos.y + 'px'}" ref="target")
+  el-alert(
+    v-if="webCamErrorCode !== null"
+    type="error"
+    :title="webcamErrorMessage"
+    show-icon
+  )
+  div.webcam-view
+    video#webcam(width="400" height="300" ref="webcam" autoplay)
+    canvas#overlay(width="400" height="300" ref="overlay")
+  canvas#eyes(width="50" height="25" ref="eyes" v-show="false")
+  el-button#train(
+    @click="fitModel"
+    type="primary"
+    :loading="trainloading"
+  ) Train!
+  #target(
+    v-show="targetPos.x !== null"
+    :style="{top: targetPos.x + 'px', left: targetPos.y + 'px'}"
+    ref="target"
+  )
 </template>
 
 <script>
-import clm from './clmtrackr.js'
+import clm from '../components/clmtrackr.js'
 import * as tf from '@tensorflow/tfjs'
-
-// const mouse = {
-//     x: 0,
-//     y: 0,
-//
-//     handleMouseMove: function(event) {
-//
-//         mouse.x = (event.clientX / $(window).width()) * 2 - 1;
-//         mouse.y = (event.clientY / $(window).height()) * 2 - 1;
-//     },
-// }
 
 export default {
   data() {
     return {
+      webCamErrorCode: null,
+      camErrorMessages: {
+        0: 'Bitte geben sie uns Zugriff auf ihre Webcam',
+        8: 'Keine Webcam erkannt: Bitte verbinden sie eine Kamera/Webcam'
+      },
       targetPos: {
         x: null,
         y: null
@@ -49,6 +58,16 @@ export default {
       currentModel: null
     }
   },
+  computed: {
+    webcamErrorMessage() {
+      if (this.webCamErrorCode === null) return
+
+      const message =
+        this.camErrorMessages[this.webCamErrorCode] ||
+        'Ein Fehler ist mit ihre Webcam aufgetreten bitte versuchen sie es nochmal'
+      return message + ' und laden sie die Seite neu'
+    }
+  },
   methods: {
     updateTarget() {
       if (this.currentModel === null) {
@@ -59,13 +78,13 @@ export default {
         const prediction = this.currentModel.predict(image)
 
         // Конвертируем нормализованные координаты в позицию на экране
-        // console.log('prediction:', prediction)
-        //   console.log(this.$refs)
 
         const targetWidth = this.$refs.target.offsetWidth
         const targetHeight = this.$refs.target.offsetHeight
+
+        const slope = targetHeight / targetWidth
+
         const { height, width } = this.getWindowDim()
-        const x1 = prediction.get(0, 0)
         const x = ((prediction.get(0, 0) + 1) / 2) * (width - targetWidth)
         const y = ((prediction.get(0, 1) + 1) / 2) * (height - targetHeight)
 
@@ -205,9 +224,6 @@ export default {
         subset.n += 1
       })
     }
-
-
-
     const trackingLoop = () => {
       // Проверим, обнаружено ли в видеопотоке лицо,
       // и если это так - начнём его отслеживать.
@@ -269,10 +285,10 @@ export default {
       return [minX, minY, width, height]
     }
     this.getWindow().addEventListener('mousemove', ({ x, y }) => {
-      this.mouse.x = (x/this.getWindow().innerWidth)*2-1
-      this.mouse.y = (y/this.getWindow().innerHeight)*2-1
-        // mouse.x = (event.clientX / $(window).width()) * 2 - 1;
-        // mouse.y = (event.clientY / $(window).height()) * 2 - 1;
+      this.mouse.x = (x / this.getWindow().innerWidth) * 2 - 1
+      this.mouse.y = (y / this.getWindow().innerHeight) * 2 - 1
+      // mouse.x = (event.clientX / $(window).width()) * 2 - 1;
+      // mouse.y = (event.clientY / $(window).height()) * 2 - 1;
     })
     this.getWindow().addEventListener('keyup', function(event) {
       // Выполняется при нажатии на клавишу Пробел на клавиатуре
@@ -287,7 +303,12 @@ export default {
 
     setInterval(this.updateTarget, 100)
 
-    navigator.mediaDevices.getUserMedia({ video: true }).then(onStreaming)
+    navigator.mediaDevices
+      .getUserMedia({ video: true })
+      .then(onStreaming)
+      .catch(err => {
+        this.webCamErrorCode = err.code
+      })
   }
 }
 </script>
@@ -303,10 +324,13 @@ export default {
   top: 50px
   left: 500px
 
-#webcam, #overlay
-  position: absolute
-  top: 0
-  left: 0
+.webcam-view
+  position: relative
+  margin: 3em
+  #webcam, #overlay
+    position: absolute
+    top: 0
+    left: 0
 
 #train
   position: absolute

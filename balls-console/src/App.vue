@@ -1,16 +1,30 @@
 <template lang="pug">
 #app
-  h1 App
-  eye-tracker
-  cookie-law(theme="dark-lime")
+  el-menu(default-active="1" mode="horizontal")
+    el-menu-item(index="1")
+      router-link(to="/home") Home
+    el-menu-item(index="2")
+      router-link(to="/callibration") Kallibrierung
+  router-view
+  cookie-law(
+    theme="dark-lime"
+    :buttonText="'Verstanden!'"
+    :message="cookieMessage"
+
+  )
+    // div(slot="message") hallo
 </template>
 
 <script>
 import CookieLaw from 'vue-cookie-law'
-import EyeTracker from './components/EyeTracker'
 
 export default {
-  components: { CookieLaw, EyeTracker }
+  components: { CookieLaw },
+  data() {
+    return {
+      cookieMessage: 'Diese Webseite verwendet cookies um ihre Nutzererfahrung zu verbessern'
+    }
+  }
 }
 </script>
 
