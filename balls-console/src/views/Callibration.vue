@@ -15,6 +15,7 @@ div
     type="primary"
     :loading="trainloading"
   ) Train!
+  el-button(@click="popup") Hallo
   #target(
     v-show="targetPos.x !== null"
     :style="{top: targetPos.x + 'px', left: targetPos.y + 'px'}"
@@ -30,6 +31,7 @@ export default {
   data() {
     return {
       webCamErrorCode: null,
+      interrupt: false,
       camErrorMessages: {
         0: 'Bitte geben sie uns Zugriff auf ihre Webcam',
         8: 'Keine Webcam erkannt: Bitte verbinden sie eine Kamera/Webcam'
@@ -135,7 +137,8 @@ export default {
       return model
     },
     fitModel() {
-      let batchSize = Math.floor(this.dataset.train.n * 0.1)
+      console.log('this.dataset:', this.dataset)
+      let batchSize = Math.max(Math.floor(this.dataset.train.n * 0.1), 1)
       if (batchSize < 4) {
         batchSize = 4
       } else if (batchSize > 64) {
@@ -182,30 +185,28 @@ export default {
         width: window.innerHeight,
         height: window.innerWidth
       }
-    }
-  },
-  mounted() {
-    // console.log('window:', window)
-    // console.log('this:', this)
-    // console.log('this.$el.ownerDocument.defaultView:', this.$el.ownerDocument.defaultView)
-    const video = this.$refs.webcam
-    const ctrack = new clm.tracker()
-    ctrack.init()
-    const overlay = this.$refs.overlay
-    const overlayCC = overlay.getContext('2d')
-    // Отслеживание перемещений мыши:
+    },
+    processKeyDown(event) {
+      console.log('captured')
+      // Выполняется при нажатии на клавишу Пробел на клавиатуре
+      if (event.keyCode === 32) {
+        this.captureExample()
 
-    const captureExample = () => {
-      // this.targetPos.x = this.mouse.x
-      // this.targetPos.y = this.mouse.y
-      console.log(this.mouse)
+        event.preventDefault()
+        return false
+      }
+    },
+    captureExample() {
       // Возьмём самое свежее изображение глаз и добавим его в набор данных
       tf.tidy(() => {
         const image = this.getImage()
         const mousePos = tf.tensor1d([this.mouse.x, this.mouse.y]).expandDims(0)
 
         // Решим, в какую выборку (обучающую или контрольную) его добавлять
-        const subset = this.dataset[Math.random() > 0.2 ? 'train' : 'val']
+
+        const subset = this.dataset[
+          this.dataset.train.n === 0 || Math.random() > 0.2 ? 'train' : 'val'
+        ]
 
         if (subset.x === null) {
           // Создадим новые тензоры
@@ -221,13 +222,34 @@ export default {
         }
 
         // Увеличим счётчик
-        subset.n += 1
+        subset.n++
       })
+    },
+    captureMouseCoords({ x, y }) {
+      this.mouse.x = (x / this.getWindow().innerWidth) * 2 - 1
+      this.mouse.y = (y / this.getWindow().innerHeight) * 2 - 1
+      // mouse.x = (event.clientX / $(window).width()) * 2 - 1;
+      // mouse.y = (event.clientY / $(window).height()) * 2 - 1;
+    },
+    popup() {
+      this.getWindow().open('/donate', 'spezial', 'width=700,height=500')
     }
-    const trackingLoop = () => {
+  },
+  mounted() {
+    const video = this.$refs.webcam
+    const ctrack = new clm.tracker()
+    ctrack.init()
+    const overlay = this.$refs.overlay
+    const overlayCC = overlay.getContext('2d')
+    // Отслеживание перемещений мыши:
+
+    const trackingLoop = origin => () => {
+      if (this.interrupt) {
+        return
+      }
       // Проверим, обнаружено ли в видеопотоке лицо,
       // и если это так - начнём его отслеживать.
-      requestAnimationFrame(trackingLoop)
+      requestAnimationFrame(trackingLoop('requestAnimationFrame'))
 
       let currentPosition = ctrack.getCurrentPosition()
       overlayCC.clearRect(0, 0, 400, 300)
@@ -271,7 +293,7 @@ export default {
     function onStreaming(stream) {
       video.srcObject = stream
       ctrack.start(video)
-      trackingLoop()
+      trackingLoop('onStreaming')()
     }
     function getEyesRectangle(positions) {
       const minX = positions[23][0] - 5
@@ -284,24 +306,10 @@ export default {
 
       return [minX, minY, width, height]
     }
-    this.getWindow().addEventListener('mousemove', ({ x, y }) => {
-      this.mouse.x = (x / this.getWindow().innerWidth) * 2 - 1
-      this.mouse.y = (y / this.getWindow().innerHeight) * 2 - 1
-      // mouse.x = (event.clientX / $(window).width()) * 2 - 1;
-      // mouse.y = (event.clientY / $(window).height()) * 2 - 1;
-    })
-    this.getWindow().addEventListener('keyup', function(event) {
-      // Выполняется при нажатии на клавишу Пробел на клавиатуре
-      // console.log('event:', event)
-      if (event.keyCode === 32) {
-        captureExample()
+    this.getWindow().addEventListener('mousemove', this.captureMouseCoords)
+    this.getWindow().addEventListener('keydown', this.processKeyDown)
 
-        event.preventDefault()
-        return false
-      }
-    })
-
-    setInterval(this.updateTarget, 100)
+    this.intervalLoop = setInterval(this.updateTarget, 100)
 
     navigator.mediaDevices
       .getUserMedia({ video: true })
@@ -309,6 +317,12 @@ export default {
       .catch(err => {
         this.webCamErrorCode = err.code
       })
+  },
+  beforeDestroy() {
+    clearInterval(this.intervalLoop)
+    this.interrupt = true
+    this.getWindow().removeEventListener('mousemove', this.captureMouseCoords)
+    this.getWindow().removeEventListener('keydown', this.processKeyDown)
   }
 }
 </script>
