@@ -1,5 +1,13 @@
 <template lang="pug">
 #app
+  cookie-law(
+    theme="dark-lime"
+    buttonText="Verstanden!"
+    :message="cookieMessage"
+    buttonClass="el-button el-button--success"
+    @accept="accept"
+    ref="cookies"
+  )
   el-header
     el-menu(
       :default-active="$router.currentRoute.path"
@@ -18,13 +26,8 @@
         span(slot="title") Spenden sie
     // el-button Einstellungen
   router-view
-  cookie-law(
-    theme="dark-lime"
-    :buttonText="'Verstanden!'"
-    :message="cookieMessage"
-
-  )
-    // div(slot="message") hallo
+//   el-footer
+//     span footer
 </template>
 
 <script>
@@ -36,9 +39,27 @@ export default {
     return {
       cookieMessage: 'Diese Webseite verwendet cookies um ihre Nutzererfahrung zu verbessern'
     }
+  },
+  mounted() {
+    console.log('this.$refs.cookies.getVisited():', this.$refs.cookies.getVisited())
+  },
+  methods: {
+    accept() {
+      console.log('accepted')
+    }
   }
 }
 </script>
+
+<style lang="sass" scoped>
+
+footer
+  position: absolute
+  bottom: 0
+  left: 0.5em
+  right: 0.5em
+  border: 1px solid
+</style>
 
 <style lang="sass">
 #app

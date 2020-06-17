@@ -1,6 +1,6 @@
 <template lang="pug">
 div
-  el-alert(
+  el-alert.cam-error(
     v-if="webCamErrorCode !== null"
     type="error"
     :title="webcamErrorMessage"
@@ -15,7 +15,8 @@ div
     type="primary"
     :loading="trainloading"
   ) Train!
-  el-button(@click="popup") Hallo
+  // popup code
+  // el-button(@click="popup") Hallo
   #target(
     v-show="targetPos.x !== null"
     :style="{top: targetPos.x + 'px', left: targetPos.y + 'px'}"
@@ -345,6 +346,10 @@ export default {
     position: absolute
     top: 0
     left: 0
+
+.cam-error
+  margin: 0.8em
+  width: 99%
 
 #train
   position: absolute
