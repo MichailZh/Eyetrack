@@ -72,6 +72,14 @@ export default {
     }
   },
   methods: {
+    flipCorner(x, y) {
+      const { height, width } = this.getWindowDim()
+
+      const newX = (width / height) * y
+      const newY = (height / width) * x
+
+      return { newX, newY }
+    },
     updateTarget() {
       if (this.currentModel === null) {
         return
@@ -91,10 +99,12 @@ export default {
         const x = ((prediction.get(0, 0) + 1) / 2) * (width - targetWidth)
         const y = ((prediction.get(0, 1) + 1) / 2) * (height - targetHeight)
 
+        const { newX, newY } = this.flipCorner(x, y)
+
         // Переместим в нужное место кружок:
         // const target = this.$refs.target
-        this.targetPos.x = x
-        this.targetPos.y = y
+        this.targetPos.x = newX
+        this.targetPos.y = newY
       })
     },
     createModel() {
@@ -138,7 +148,6 @@ export default {
       return model
     },
     fitModel() {
-      console.log('this.dataset:', this.dataset)
       let batchSize = Math.max(Math.floor(this.dataset.train.n * 0.1), 1)
       if (batchSize < 4) {
         batchSize = 4
@@ -188,7 +197,6 @@ export default {
       }
     },
     processKeyDown(event) {
-      console.log('captured')
       // Выполняется при нажатии на клавишу Пробел на клавиатуре
       if (event.keyCode === 32) {
         this.captureExample()

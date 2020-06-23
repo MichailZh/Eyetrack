@@ -5,7 +5,7 @@
     | Wenn sie dieses Project unterstützen möchten können sie gerne Spenden.
     | Überflüssige spenden werden an helfende Organisation weitergegeben. Falls
     | sie auf einer anderen Art spenden möchten können sie uns gerne unter
-    copyable-text(text="unsere-email@ballstracker.test-email.com")
+    copyable-text(text="phildumonet@gmail.com")
     | kontaktieren
   .donations
     .donation(v-for="method in donationMethods" :key="method.address")

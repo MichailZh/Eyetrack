@@ -5,11 +5,14 @@
     buttonText="Verstanden!"
     :message="cookieMessage"
     buttonClass="el-button el-button--success"
-    @accept="accept"
-    ref="cookies"
   )
-  el-header
-    el-menu(
+  el-header.top-bar(
+    v-if="$route.name !== 'invalid-url'"
+  )
+    // el-button(@click="showRouter") show me!
+    h2.title
+      router-link.home-link(to="/") Balltracker
+    el-menu.top-bar-menu(
       :default-active="$router.currentRoute.path"
       mode="horizontal"
       :router="true"
@@ -40,18 +43,25 @@ export default {
       cookieMessage: 'Diese Webseite verwendet cookies um ihre Nutzererfahrung zu verbessern'
     }
   },
-  mounted() {
-    console.log('this.$refs.cookies.getVisited():', this.$refs.cookies.getVisited())
-  },
   methods: {
-    accept() {
-      console.log('accepted')
+    showRouter() {
+      console.log('this.$router:', this.$router)
     }
   }
 }
 </script>
 
 <style lang="sass" scoped>
+
+.top-bar
+  display: flex
+  .top-bar-menu
+    flex-grow: 1
+  .title
+    .home-link
+      text-decoration: none
+      color: inherit
+    margin-right: 1em
 
 footer
   position: absolute
